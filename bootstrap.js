@@ -17,6 +17,12 @@ var ZoteroAudit = {
       .getProtocolHandler("resource")
       .QueryInterface(Components.interfaces.nsIResProtocolHandler)
       .setSubstitution("zotero-audit", Services.io.newURI(rootURI));
+
+    // Add menu to any windows already open (onMainWindowLoad only fires for new windows)
+    for (const win of Zotero.getMainWindows()) {
+      if (!win.ZoteroPane) continue;
+      this._addMenuItem(win);
+    }
   },
 
   shutdown() {
