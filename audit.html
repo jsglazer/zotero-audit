@@ -149,7 +149,8 @@
     "use strict";
 
     (async () => {
-      const api = window.arguments && window.arguments[0];
+      const _raw = window.arguments && window.arguments[0];
+      const api = _raw && (_raw.wrappedJSObject || _raw);
       const tbody = document.getElementById("tbody");
       const statusbar = document.getElementById("statusbar");
 
