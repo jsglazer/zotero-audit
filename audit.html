@@ -149,13 +149,55 @@
     "use strict";
 
     (async () => {
-      const api = window.opener && window.opener._zoteroAuditAPI;
       const tbody = document.getElementById("tbody");
       const statusbar = document.getElementById("statusbar");
 
       function setStatus(msg, cls) {
         statusbar.textContent = msg;
         statusbar.className = cls || "";
+      }
+
+      // Items pre-loaded by bootstrap and passed as a JSON string.
+      // Strings are primitives and cross any context boundary without issue.
+      const json = window.arguments && window.arguments[0];
+      if (!json || typeof json !== "string") {
+        setStatus("Error: no data from plugin", "error");
+        return;
+      }
+
+      let items;
+      try {
+        items = JSON.parse(json);
+      } catch (e) {
+        setStatus(`Error parsing data: ${e.message}`, "error");
+        return;
+      }
+
+      // Saves go back to bootstrap via postMessage — no functions cross the boundary.
+      let _reqSeq = 0;
+      const _pending = new Map();
+
+      window.addEventListener("message", (e) => {
+        if (!e.data || e.data.type !== "zotero-audit-save-result") return;
+        const cb = _pending.get(e.data.reqId);
+        if (cb) {
+          _pending.delete(e.data.reqId);
+          cb(e.data);
+        }
+      });
+
+      function saveField(itemID, field, value) {
+        return new Promise((resolve, reject) => {
+          const reqId = ++_reqSeq;
+          _pending.set(reqId, (res) => {
+            if (res.ok) resolve();
+            else reject(new Error(res.error || "Save failed"));
+          });
+          window.opener.postMessage(
+            { type: "zotero-audit-save", reqId, itemID, field, value },
+            "*"
+          );
+        });
       }
 
       function updateCellClass(td, value) {
@@ -185,13 +227,12 @@
           setStatus("Saving…", "saving");
 
           try {
-            await api.saveField(item.id, field, newVal.trim());
+            await saveField(item.id, field, newVal.trim());
             item[field] = newVal.trim();
             input._saved = newVal;
             setStatus(`Saved — ${item.title || item.citationKey || item.id}`);
           } catch (e) {
             setStatus(`Error saving: ${e.message || e}`, "error");
-            // Revert
             input.value = input._saved;
             updateCellClass(td, input._saved);
           }
@@ -210,23 +251,12 @@
         return tr;
       }
 
-      if (!api) {
-        setStatus("Error: plugin API not available", "error");
-        return;
+      const fragment = document.createDocumentFragment();
+      for (const item of items) {
+        fragment.appendChild(buildRow(item));
       }
-
-      try {
-        setStatus("Loading items…");
-        const items = await api.loadItems();
-        const fragment = document.createDocumentFragment();
-        for (const item of items) {
-          fragment.appendChild(buildRow(item));
-        }
-        tbody.appendChild(fragment);
-        setStatus(`${items.length} item${items.length !== 1 ? "s" : ""}`);
-      } catch (e) {
-        setStatus(`Failed to load library: ${e.message || e}`, "error");
-      }
+      tbody.appendChild(fragment);
+      setStatus(`${items.length} item${items.length !== 1 ? "s" : ""}`);
     })();
   </script>
 </body>

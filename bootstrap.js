@@ -1,4 +1,4 @@
-/* bootstrap.js — Zotero Audit v1.0.2
+/* bootstrap.js — Zotero Audit v1.0.3
  * Zotero 9 bootstrapped extension entry point.
  * Uses onMainWindowLoad/onMainWindowUnload (Zotero 7+ API).
  * Zotero is available as a global in this context.
@@ -68,32 +68,57 @@ var ZoteroAudit = {
   // Dialog
   // ---------------------------------------------------------------------------
 
-  _openDialog(win) {
+  async _openDialog(win) {
     if (this._dialog && !this._dialog.closed) {
       this._dialog.focus();
       return;
     }
 
-    // Store API on the opener window so the HTML page can reach it via
-    // window.opener._zoteroAuditAPI — passing functions via window.arguments
-    // doesn't work for HTML dialogs because Gecko drops function properties
-    // during argument serialization.
-    win._zoteroAuditAPI = {
-      loadItems: () => this._loadItems(),
-      saveField: (itemID, field, value) => this._saveField(itemID, field, value),
-    };
+    let items;
+    try {
+      items = await this._loadItems();
+    } catch (e) {
+      Zotero.logError(`Zotero Audit: failed to load items: ${e}`);
+      return;
+    }
 
+    // Pass items as a JSON string — primitives survive any cross-context boundary.
+    // Saves come back via postMessage so no functions ever cross the boundary.
     this._dialog = win.openDialog(
       "resource://zotero-audit/audit.html",
       "zotero-audit-dialog",
-      "chrome,dialog=no,resizable,centerscreen,width=1200,height=700"
+      "chrome,dialog=no,resizable,centerscreen,width=1200,height=700",
+      JSON.stringify(items)
     );
 
-    this._dialog.addEventListener("unload", () => delete win._zoteroAuditAPI, { once: true });
+    const saveListener = async (e) => {
+      if (!e.data || e.data.type !== "zotero-audit-save") return;
+      const { reqId, itemID, field, value } = e.data;
+      try {
+        await this._saveField(itemID, field, value);
+        if (this._dialog && !this._dialog.closed) {
+          this._dialog.postMessage({ type: "zotero-audit-save-result", reqId, ok: true }, "*");
+        }
+      } catch (err) {
+        if (this._dialog && !this._dialog.closed) {
+          this._dialog.postMessage({
+            type: "zotero-audit-save-result",
+            reqId,
+            ok: false,
+            error: String(err.message || err),
+          }, "*");
+        }
+      }
+    };
+
+    win.addEventListener("message", saveListener);
+    this._dialog.addEventListener("unload", () => {
+      win.removeEventListener("message", saveListener);
+    }, { once: true });
   },
 
   // ---------------------------------------------------------------------------
-  // Data API — called from the dialog via window.opener._zoteroAuditAPI
+  // Data API
   // ---------------------------------------------------------------------------
 
   async _loadItems() {
