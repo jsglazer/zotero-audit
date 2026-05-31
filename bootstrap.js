@@ -118,7 +118,7 @@ var ZoteroAudit = {
     };
 
     this._dialog = win.openDialog(
-      "resource://zotero-audit/content/audit.html",
+      "resource://zotero-audit/audit.html",
       "zotero-audit-dialog",
       "chrome,dialog=no,resizable,centerscreen,width=1200,height=700",
       args
