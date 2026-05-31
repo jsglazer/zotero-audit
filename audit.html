@@ -149,8 +149,7 @@
     "use strict";
 
     (async () => {
-      const _raw = window.arguments && window.arguments[0];
-      const api = _raw && (_raw.wrappedJSObject || _raw);
+      const api = window.opener && window.opener._zoteroAuditAPI;
       const tbody = document.getElementById("tbody");
       const statusbar = document.getElementById("statusbar");
 

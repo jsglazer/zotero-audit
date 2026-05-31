@@ -1,4 +1,4 @@
-/* bootstrap.js — Zotero Audit v1.0.1
+/* bootstrap.js — Zotero Audit v1.0.2
  * Zotero 9 bootstrapped extension entry point.
  * Uses onMainWindowLoad/onMainWindowUnload (Zotero 7+ API).
  * Zotero is available as a global in this context.
@@ -74,7 +74,11 @@ var ZoteroAudit = {
       return;
     }
 
-    const args = {
+    // Store API on the opener window so the HTML page can reach it via
+    // window.opener._zoteroAuditAPI — passing functions via window.arguments
+    // doesn't work for HTML dialogs because Gecko drops function properties
+    // during argument serialization.
+    win._zoteroAuditAPI = {
       loadItems: () => this._loadItems(),
       saveField: (itemID, field, value) => this._saveField(itemID, field, value),
     };
@@ -82,13 +86,14 @@ var ZoteroAudit = {
     this._dialog = win.openDialog(
       "resource://zotero-audit/audit.html",
       "zotero-audit-dialog",
-      "chrome,dialog=no,resizable,centerscreen,width=1200,height=700",
-      args
+      "chrome,dialog=no,resizable,centerscreen,width=1200,height=700"
     );
+
+    this._dialog.addEventListener("unload", () => delete win._zoteroAuditAPI, { once: true });
   },
 
   // ---------------------------------------------------------------------------
-  // Data API — called from the dialog via window.arguments[0]
+  // Data API — called from the dialog via window.opener._zoteroAuditAPI
   // ---------------------------------------------------------------------------
 
   async _loadItems() {
