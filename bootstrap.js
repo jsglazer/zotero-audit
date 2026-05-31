@@ -1,21 +1,15 @@
-/* bootstrap.js — Zotero Audit v1.0.4
+/* bootstrap.js — Zotero Audit v1.0.5
  * Zotero 9 bootstrapped extension entry point.
- * Dialog (audit.html) is self-contained — it accesses Zotero directly
- * via Components.classes so no cross-window bridge is needed here.
+ * Dialog uses chrome://zotero-audit/content/audit.html (registered via
+ * chrome.manifest) so it runs with full chrome privileges and can access
+ * Components.classes / Zotero directly — no bridge needed.
  */
 
 var ZoteroAudit = {
-  rootURI: null,
   _dialog: null,
 
   async startup({ id, version, rootURI }) {
-    this.rootURI = rootURI;
     await Zotero.initializationPromise;
-
-    Services.io
-      .getProtocolHandler("resource")
-      .QueryInterface(Components.interfaces.nsIResProtocolHandler)
-      .setSubstitution("zotero-audit", Services.io.newURI(rootURI));
 
     for (const win of Zotero.getMainWindows()) {
       if (!win.ZoteroPane) continue;
@@ -24,13 +18,6 @@ var ZoteroAudit = {
   },
 
   shutdown() {
-    try {
-      Services.io
-        .getProtocolHandler("resource")
-        .QueryInterface(Components.interfaces.nsIResProtocolHandler)
-        .setSubstitution("zotero-audit", null);
-    } catch (e) {}
-
     if (this._dialog && !this._dialog.closed) this._dialog.close();
     this._dialog = null;
   },
@@ -62,7 +49,7 @@ var ZoteroAudit = {
       return;
     }
     this._dialog = win.openDialog(
-      "resource://zotero-audit/audit.html",
+      "chrome://zotero-audit/content/audit.html",
       "zotero-audit-dialog",
       "chrome,dialog=no,resizable,centerscreen,width=1200,height=700"
     );
