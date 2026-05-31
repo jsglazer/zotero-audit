@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Zotero Audit</title>
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    html, body {
+      height: 100%;
+      background: #000;
+      color: #fff;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      font-size: 13px;
+      overflow: hidden;
+    }
+
+    #wrapper {
+      width: 100%;
+      height: calc(100% - 24px);
+      overflow: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+
+    thead {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    thead tr {
+      background: #111;
+    }
+
+    th {
+      padding: 5px 8px;
+      text-align: left;
+      font-weight: 600;
+      color: #999;
+      border-bottom: 2px solid #333;
+      border-right: 1px solid #222;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      user-select: none;
+    }
+
+    /* Column widths */
+    th:nth-child(1), td:nth-child(1) { width: 12%; }
+    th:nth-child(2), td:nth-child(2) { width: 18%; }
+    th:nth-child(3), td:nth-child(3) { width: 22%; }
+    th:nth-child(4), td:nth-child(4) { width: 12%; }
+    th:nth-child(5), td:nth-child(5) { width: 16%; }
+    th:nth-child(6), td:nth-child(6) { width: 10%; }
+    th:nth-child(7), td:nth-child(7) { width: 10%; }
+
+    tbody tr:nth-child(even) td {
+      filter: brightness(0.95);
+    }
+
+    td {
+      padding: 0;
+      border: 1px solid #1c1c1c;
+      height: 26px;
+    }
+
+    td.present {
+      background: #90ee90;
+    }
+
+    td.missing {
+      background: #ffb3b3;
+    }
+
+    input.cell {
+      display: block;
+      width: 100%;
+      height: 100%;
+      padding: 4px 7px;
+      border: none;
+      outline: none;
+      font-size: 13px;
+      font-family: inherit;
+      background: transparent;
+      color: #000;
+      cursor: text;
+    }
+
+    input.cell:focus {
+      box-shadow: inset 0 0 0 2px rgba(60, 130, 255, 0.75);
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    #statusbar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 24px;
+      line-height: 24px;
+      background: #0d0d0d;
+      color: #777;
+      padding: 0 10px;
+      font-size: 11px;
+      border-top: 1px solid #222;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    #statusbar.error {
+      color: #ff8080;
+    }
+
+    #statusbar.saving {
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div id="wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th>Content Type</th>
+          <th>Citation ID</th>
+          <th>Title</th>
+          <th>Short Title</th>
+          <th>Author</th>
+          <th>Year</th>
+          <th>Month</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+  <div id="statusbar">Loading…</div>
+
+  <script>
+    "use strict";
+
+    (async () => {
+      const api = window.arguments && window.arguments[0];
+      const tbody = document.getElementById("tbody");
+      const statusbar = document.getElementById("statusbar");
+
+      function setStatus(msg, cls) {
+        statusbar.textContent = msg;
+        statusbar.className = cls || "";
+      }
+
+      function updateCellClass(td, value) {
+        td.className = value ? "present" : "missing";
+      }
+
+      function makeCell(item, field, initialValue) {
+        const td = document.createElement("td");
+        updateCellClass(td, initialValue);
+
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "cell";
+        input.value = initialValue;
+        input.spellcheck = false;
+        input.autocomplete = "off";
+
+        input.addEventListener("focus", () => {
+          input._saved = input.value;
+        });
+
+        input.addEventListener("blur", async () => {
+          const newVal = input.value;
+          if (newVal === input._saved) return;
+
+          updateCellClass(td, newVal);
+          setStatus("Saving…", "saving");
+
+          try {
+            await api.saveField(item.id, field, newVal.trim());
+            item[field] = newVal.trim();
+            input._saved = newVal;
+            setStatus(`Saved — ${item.title || item.citationKey || item.id}`);
+          } catch (e) {
+            setStatus(`Error saving: ${e.message || e}`, "error");
+            // Revert
+            input.value = input._saved;
+            updateCellClass(td, input._saved);
+          }
+        });
+
+        td.appendChild(input);
+        return td;
+      }
+
+      function buildRow(item) {
+        const tr = document.createElement("tr");
+        const fields = ["type", "citationKey", "title", "shortTitle", "author", "year", "month"];
+        for (const field of fields) {
+          tr.appendChild(makeCell(item, field, item[field]));
+        }
+        return tr;
+      }
+
+      if (!api) {
+        setStatus("Error: plugin API not available", "error");
+        return;
+      }
+
+      try {
+        setStatus("Loading items…");
+        const items = await api.loadItems();
+        const fragment = document.createDocumentFragment();
+        for (const item of items) {
+          fragment.appendChild(buildRow(item));
+        }
+        tbody.appendChild(fragment);
+        setStatus(`${items.length} item${items.length !== 1 ? "s" : ""}`);
+      } catch (e) {
+        setStatus(`Failed to load library: ${e.message || e}`, "error");
+      }
+    })();
+  </script>
+</body>
+</html>
