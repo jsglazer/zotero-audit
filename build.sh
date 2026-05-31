@@ -3,5 +3,6 @@
 set -e
 cd "$(dirname "$0")"
 rm -f zotero-audit.xpi
-zip zotero-audit.xpi manifest.json bootstrap.js chrome.manifest audit.html LICENSE
+zip zotero-audit.xpi manifest.json bootstrap.js chrome.manifest LICENSE
+zip zotero-audit.xpi chrome/content/audit.html
 echo "Built zotero-audit.xpi"

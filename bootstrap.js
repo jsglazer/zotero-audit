@@ -1,15 +1,24 @@
-/* bootstrap.js — Zotero Audit v1.0.5
- * Zotero 9 bootstrapped extension entry point.
- * Dialog uses chrome://zotero-audit/content/audit.html (registered via
- * chrome.manifest) so it runs with full chrome privileges and can access
- * Components.classes / Zotero directly — no bridge needed.
+/* bootstrap.js — Zotero Audit v1.0.6
+ * Zotero 7+ bootstrapped extension entry point.
+ * chrome.manifest is NOT auto-processed; must be registered via
+ * aomStartup.registerChrome() in startup() so chrome:// URLs resolve.
  */
 
 var ZoteroAudit = {
   _dialog: null,
+  _chromeHandle: null,
 
   async startup({ id, version, rootURI }) {
     await Zotero.initializationPromise;
+
+    // Register chrome package so chrome://zotero-audit/content/ resolves
+    const aomStartup = Components.classes[
+      "@mozilla.org/addons/addon-manager-startup;1"
+    ].getService(Components.interfaces.amIAddonManagerStartup);
+    this._chromeHandle = aomStartup.registerChrome(
+      Services.io.newURI(rootURI + "chrome.manifest"),
+      [["content", "zotero-audit", "chrome/content/"]]
+    );
 
     for (const win of Zotero.getMainWindows()) {
       if (!win.ZoteroPane) continue;
@@ -20,6 +29,11 @@ var ZoteroAudit = {
   shutdown() {
     if (this._dialog && !this._dialog.closed) this._dialog.close();
     this._dialog = null;
+
+    if (this._chromeHandle) {
+      this._chromeHandle.destruct();
+      this._chromeHandle = null;
+    }
   },
 
   onMainWindowLoad({ window }) {
