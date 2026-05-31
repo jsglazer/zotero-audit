@@ -1,59 +1,25 @@
-/* bootstrap.js — Zotero Audit v1.0.0
- * Entry point for Zotero 7 bootstrapped extension.
- * Adds "Audit Library…" to the Tools menu and opens the audit dialog.
+/* bootstrap.js — Zotero Audit v1.0.1
+ * Zotero 9 bootstrapped extension entry point.
+ * Uses onMainWindowLoad/onMainWindowUnload (Zotero 7+ API).
+ * Zotero is available as a global in this context.
  */
 
 var ZoteroAudit = {
-  id: null,
-  version: null,
   rootURI: null,
-  _Zotero: null,
-  _windowListener: null,
   _dialog: null,
 
   async startup({ id, version, rootURI }) {
-    this.id = id;
-    this.version = version;
     this.rootURI = rootURI;
+    await Zotero.initializationPromise;
 
-    // Obtain Zotero service
-    this._Zotero = Components.classes["@zotero.org/Zotero;1"]
-      .getService(Components.interfaces.nsISupports).wrappedJSObject;
-
-    await this._Zotero.initializationPromise;
-
-    // Register resource:// URL so the dialog can be opened reliably
-    const resourceProto = Services.io
+    // Register resource:// alias so jar: URLs inside the XPI open reliably
+    Services.io
       .getProtocolHandler("resource")
-      .QueryInterface(Components.interfaces.nsIResProtocolHandler);
-    resourceProto.setSubstitution("zotero-audit", Services.io.newURI(rootURI));
-
-    // Wire up the window listener for future windows
-    this._windowListener = {
-      onOpenWindow: (xulWindow) => {
-        const win = xulWindow
-          .QueryInterface(Components.interfaces.nsIInterfaceRequestor)
-          .getInterface(Components.interfaces.nsIDOMWindow);
-        win.addEventListener("load", () => {
-          if (win.document.documentElement.getAttribute("windowtype") === "zotero:main") {
-            this._addMenuItem(win);
-          }
-        }, { once: true });
-      },
-      onCloseWindow: () => {},
-      onWindowTitleChange: () => {},
-    };
-
-    // Add menu item to all currently open Zotero windows
-    this._addToAllWindows();
-    Services.wm.addListener(this._windowListener);
+      .QueryInterface(Components.interfaces.nsIResProtocolHandler)
+      .setSubstitution("zotero-audit", Services.io.newURI(rootURI));
   },
 
   shutdown() {
-    Services.wm.removeListener(this._windowListener);
-    this._removeFromAllWindows();
-
-    // Deregister resource:// substitution
     try {
       Services.io
         .getProtocolHandler("resource")
@@ -61,39 +27,29 @@ var ZoteroAudit = {
         .setSubstitution("zotero-audit", null);
     } catch (e) {}
 
-    if (this._dialog && !this._dialog.closed) {
-      this._dialog.close();
-    }
+    if (this._dialog && !this._dialog.closed) this._dialog.close();
     this._dialog = null;
   },
 
-  // ---------------------------------------------------------------------------
-  // Window helpers
-  // ---------------------------------------------------------------------------
-
-  _addToAllWindows() {
-    const enumerator = Services.wm.getEnumerator("zotero:main");
-    while (enumerator.hasMoreElements()) {
-      const win = enumerator.getNext()
-        .QueryInterface(Components.interfaces.nsIDOMWindow);
-      this._addMenuItem(win);
-    }
+  // Called by Zotero whenever a main window opens (including on startup)
+  onMainWindowLoad({ window }) {
+    this._addMenuItem(window);
   },
 
-  _removeFromAllWindows() {
-    const enumerator = Services.wm.getEnumerator("zotero:main");
-    while (enumerator.hasMoreElements()) {
-      const win = enumerator.getNext()
-        .QueryInterface(Components.interfaces.nsIDOMWindow);
-      const item = win.document.getElementById("zotero-audit-menuitem");
-      if (item) item.remove();
-    }
+  // Called by Zotero whenever a main window closes
+  onMainWindowUnload({ window }) {
+    window.document.getElementById("zotero-audit-menuitem")?.remove();
   },
+
+  // ---------------------------------------------------------------------------
+  // Menu
+  // ---------------------------------------------------------------------------
 
   _addMenuItem(win) {
     const doc = win.document;
+    if (doc.getElementById("zotero-audit-menuitem")) return;
     const popup = doc.getElementById("menu_ToolsPopup");
-    if (!popup || doc.getElementById("zotero-audit-menuitem")) return;
+    if (!popup) return;
 
     const item = doc.createXULElement("menuitem");
     item.id = "zotero-audit-menuitem";
@@ -126,11 +82,10 @@ var ZoteroAudit = {
   },
 
   // ---------------------------------------------------------------------------
-  // Data API — called by the dialog via window.arguments[0]
+  // Data API — called from the dialog via window.arguments[0]
   // ---------------------------------------------------------------------------
 
   async _loadItems() {
-    const Zotero = this._Zotero;
     const libraryID = Zotero.Libraries.userLibraryID;
     const allItems = await Zotero.Items.getAll(libraryID);
 
@@ -140,10 +95,9 @@ var ZoteroAudit = {
         const dateStr = item.getField("date") || "";
         const creators = item.getCreators();
         const first = creators[0] || null;
-
         return {
           id: item.id,
-          type: this._localizeType(Zotero, item.itemType),
+          type: this._localizeType(item.itemType),
           citationKey: this._getCitationKey(item),
           title: item.getField("title") || "",
           shortTitle: this._safeGetField(item, "shortTitle"),
@@ -155,16 +109,13 @@ var ZoteroAudit = {
   },
 
   async _saveField(itemID, field, value) {
-    const Zotero = this._Zotero;
     const item = await Zotero.Items.getAsync(itemID);
     if (!item) return;
 
     try {
       switch (field) {
         case "type": {
-          const typeID = Zotero.ItemTypes.getID(
-            this._unlocalizeType(Zotero, value)
-          );
+          const typeID = Zotero.ItemTypes.getID(this._unlocalizeType(value));
           if (typeID) item.setType(typeID);
           break;
         }
@@ -200,7 +151,9 @@ var ZoteroAudit = {
         case "month": {
           const existing = item.getField("date") || "";
           const yr = field === "year" ? value : this._parseYear(existing);
-          const mo = field === "month" ? this._normalizeMonth(value) : this._parseMonth(existing);
+          const mo = field === "month"
+            ? this._normalizeMonth(value)
+            : this._parseMonth(existing);
           const newDate = yr
             ? (mo ? `${yr}-${String(mo).padStart(2, "0")}` : yr)
             : "";
@@ -210,7 +163,7 @@ var ZoteroAudit = {
       }
       await item.saveTx();
     } catch (e) {
-      Components.utils.reportError(`Zotero Audit: save failed for item ${itemID}, field ${field}: ${e}`);
+      Zotero.logError(`Zotero Audit: save failed (item=${itemID}, field=${field}): ${e}`);
       throw e;
     }
   },
@@ -219,22 +172,15 @@ var ZoteroAudit = {
   // Helpers
   // ---------------------------------------------------------------------------
 
-  _localizeType(Zotero, typeName) {
-    try {
-      return Zotero.ItemTypes.getLocalizedString(typeName);
-    } catch (e) {
-      return typeName;
-    }
+  _localizeType(typeName) {
+    try { return Zotero.ItemTypes.getLocalizedString(typeName); } catch (e) { return typeName; }
   },
 
-  _unlocalizeType(Zotero, str) {
+  _unlocalizeType(str) {
     try {
-      const types = Zotero.ItemTypes.getTypes();
-      for (const t of types) {
+      for (const t of Zotero.ItemTypes.getTypes()) {
         try {
-          if (Zotero.ItemTypes.getLocalizedString(t.name).toLowerCase() === str.toLowerCase()) {
-            return t.name;
-          }
+          if (Zotero.ItemTypes.getLocalizedString(t.name).toLowerCase() === str.toLowerCase()) return t.name;
         } catch (e) {}
       }
     } catch (e) {}
@@ -248,11 +194,7 @@ var ZoteroAudit = {
   },
 
   _safeGetField(item, field) {
-    try {
-      return item.getField(field) || "";
-    } catch (e) {
-      return "";
-    }
+    try { return item.getField(field) || ""; } catch (e) { return ""; }
   },
 
   _formatCreator(c) {
@@ -272,11 +214,10 @@ var ZoteroAudit = {
     const iso = dateStr.match(/^\d{4}-(\d{2})/);
     if (iso) return iso[1];
     const map = {
-      january: "01", february: "02", march: "03", april: "04",
-      may: "05", june: "06", july: "07", august: "08",
-      september: "09", october: "10", november: "11", december: "12",
-      jan: "01", feb: "02", mar: "03", apr: "04", jun: "06",
-      jul: "07", aug: "08", sep: "09", oct: "10", nov: "11", dec: "12",
+      january:"01", february:"02", march:"03", april:"04", may:"05", june:"06",
+      july:"07", august:"08", september:"09", october:"10", november:"11", december:"12",
+      jan:"01", feb:"02", mar:"03", apr:"04", jun:"06",
+      jul:"07", aug:"08", sep:"09", oct:"10", nov:"11", dec:"12",
     };
     const lower = dateStr.toLowerCase();
     for (const [name, num] of Object.entries(map)) {
@@ -293,7 +234,9 @@ var ZoteroAudit = {
   },
 };
 
-function startup(data) { return ZoteroAudit.startup(data); }
+function install() {}
+function uninstall() {}
+async function startup(data) { await ZoteroAudit.startup(data); }
 function shutdown(data) { ZoteroAudit.shutdown(); }
-function install(data) {}
-function uninstall(data) {}
+function onMainWindowLoad(data) { ZoteroAudit.onMainWindowLoad(data); }
+function onMainWindowUnload(data) { ZoteroAudit.onMainWindowUnload(data); }
