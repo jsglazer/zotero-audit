@@ -1,4 +1,4 @@
-/* bootstrap.js — Zotero Audit v1.0.7
+/* bootstrap.js — Zotero Audit v1.0.9
  * Zotero 7+ bootstrapped extension entry point.
  * chrome.manifest is NOT auto-processed; must be registered via
  * aomStartup.registerChrome() in startup() so chrome:// URLs resolve.
@@ -22,6 +22,7 @@ var ZoteroAudit = {
 
     for (const win of Zotero.getMainWindows()) {
       if (!win.ZoteroPane) continue;
+      this._addKeybinding(win);
       this._addMenuItem(win);
     }
   },
@@ -37,11 +38,30 @@ var ZoteroAudit = {
   },
 
   onMainWindowLoad({ window }) {
+    this._addKeybinding(window);
     this._addMenuItem(window);
   },
 
   onMainWindowUnload({ window }) {
+    window.document.getElementById("zotero-audit-keyset")?.remove();
     window.document.getElementById("zotero-audit-menuitem")?.remove();
+  },
+
+  _addKeybinding(win) {
+    const doc = win.document;
+    if (doc.getElementById("zotero-audit-keyset")) return;
+
+    const keyset = doc.createXULElement("keyset");
+    keyset.id = "zotero-audit-keyset";
+
+    const key = doc.createXULElement("key");
+    key.id = "zotero-audit-key";
+    key.setAttribute("key", "A");
+    key.setAttribute("modifiers", "accel shift");
+    key.addEventListener("command", () => this._openDialog(win));
+
+    keyset.appendChild(key);
+    doc.documentElement.appendChild(keyset);
   },
 
   _addMenuItem(win) {
@@ -53,6 +73,7 @@ var ZoteroAudit = {
     const item = doc.createXULElement("menuitem");
     item.id = "zotero-audit-menuitem";
     item.setAttribute("label", "Audit Library…");
+    item.setAttribute("key", "zotero-audit-key");
     item.addEventListener("command", () => this._openDialog(win));
     popup.appendChild(item);
   },
