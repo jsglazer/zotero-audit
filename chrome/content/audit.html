@@ -53,6 +53,21 @@
       text-overflow: ellipsis;
       user-select: none;
       cursor: pointer;
+      position: relative;
+    }
+
+    .resizer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      width: 5px;
+      height: 100%;
+      cursor: col-resize;
+      z-index: 20;
+    }
+
+    .resizer:hover, .resizer.resizing {
+      background: rgba(255,255,255,0.2);
     }
 
     th:hover {
@@ -317,6 +332,43 @@
 
       document.querySelectorAll("th[data-sort]").forEach(th => {
         th.addEventListener("click", () => applySort(th.dataset.sort));
+      });
+
+      // ── Column resize ──────────────────────────────────────────────────────
+      let _resizing = null;
+
+      document.querySelectorAll("th").forEach(th => {
+        const handle = document.createElement("span");
+        handle.className = "resizer";
+        th.appendChild(handle);
+
+        handle.addEventListener("mousedown", e => {
+          e.preventDefault();
+          e.stopPropagation();
+          _resizing = { th, startX: e.clientX, startWidth: th.offsetWidth };
+          handle.classList.add("resizing");
+        });
+        handle.addEventListener("click", e => e.stopPropagation());
+      });
+
+      document.addEventListener("mousemove", e => {
+        if (!_resizing) return;
+        const w = Math.max(40, _resizing.startWidth + (e.clientX - _resizing.startX));
+        _resizing.th.style.width = w + "px";
+      });
+
+      document.addEventListener("mouseup", () => {
+        if (!_resizing) return;
+        _resizing.th.querySelector(".resizer")?.classList.remove("resizing");
+        _resizing = null;
+      });
+
+      // ── Cmd/Ctrl+W closes dialog ───────────────────────────────────────────
+      document.addEventListener("keydown", e => {
+        if ((e.metaKey || e.ctrlKey) && e.key === "w") {
+          e.preventDefault();
+          window.close();
+        }
       });
 
       // ── Save ───────────────────────────────────────────────────────────────

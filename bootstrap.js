@@ -1,4 +1,4 @@
-/* bootstrap.js — Zotero Audit v1.0.9
+/* bootstrap.js — Zotero Audit v1.0.10
  * Zotero 7+ bootstrapped extension entry point.
  * chrome.manifest is NOT auto-processed; must be registered via
  * aomStartup.registerChrome() in startup() so chrome:// URLs resolve.
@@ -20,10 +20,19 @@ var ZoteroAudit = {
       [["content", "zotero-audit", "chrome/content/"]]
     );
 
+    const prefKey = "extensions.zotero-audit.installed";
+    const isFirstRun = !Services.prefs.prefHasUserValue(prefKey);
+    if (isFirstRun) Services.prefs.setBoolPref(prefKey, true);
+
+    let shownWelcome = false;
     for (const win of Zotero.getMainWindows()) {
       if (!win.ZoteroPane) continue;
       this._addKeybinding(win);
       this._addMenuItem(win);
+      if (isFirstRun && !shownWelcome) {
+        shownWelcome = true;
+        win.setTimeout(() => this._showWelcome(win), 500);
+      }
     }
   },
 
@@ -76,6 +85,14 @@ var ZoteroAudit = {
     item.setAttribute("key", "zotero-audit-key");
     item.addEventListener("command", () => this._openDialog(win));
     popup.appendChild(item);
+  },
+
+  _showWelcome(win) {
+    Services.prompt.alert(
+      win,
+      "Zotero Audit",
+      "Thank you for installing the Zotero Audit plugin.\n\nAudit offers a fast way to ensure the minimal essential metadata fields are populated. You can edit fields directly in the table.\n\nPlease submit any issues on the GitHub page:\nhttps://github.com/jsglazer/zotero-audit/"
+    );
   },
 
   _openDialog(win) {
