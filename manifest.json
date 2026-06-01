@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero Audit",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Audit and edit metadata fields across your Zotero library",
   "applications": {
     "zotero": {

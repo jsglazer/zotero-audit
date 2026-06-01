@@ -200,15 +200,25 @@
         return str;
       }
 
+      let _bbtNote = "";
+
       function getCitationKey(item) {
-        // BBT KeyManager covers both auto-generated and pinned keys
         try {
-          if (Zotero.BetterBibTeX?.KeyManager) {
-            const rec = Zotero.BetterBibTeX.KeyManager.get(item.id);
-            if (rec?.citekey) return rec.citekey;
+          const km = Zotero.BetterBibTeX?.KeyManager;
+          if (km) {
+            const rec = km.get(item.id);
+            const key = rec?.citekey ?? rec?.key ?? rec?.citationKey;
+            if (key) return key;
+            if (!_bbtNote) _bbtNote = "BBT KeyManager returned no key";
+          } else if (Zotero.BetterBibTeX) {
+            if (!_bbtNote) _bbtNote = "BBT loaded but KeyManager unavailable";
+          } else {
+            if (!_bbtNote) _bbtNote = "BBT not loaded";
           }
-        } catch (e) {}
-        // Extra-field fallback (BBT pinned format / manual entry)
+        } catch (e) {
+          if (!_bbtNote) _bbtNote = `BBT error: ${e.message}`;
+        }
+        // Extra-field fallback for pinned / manually entered keys
         const extra = item.getField("extra") || "";
         const m = extra.match(/^Citation Key:\s*(.+)$/m);
         return m ? m[1].trim() : "";
@@ -255,6 +265,10 @@
       }
 
       // ── Load items ─────────────────────────────────────────────────────────
+
+      // Wait for BBT to finish indexing so KeyManager has all keys available.
+      // Safe to await when BBT is absent (undefined?.ready === undefined → resolves immediately).
+      try { await Zotero.BetterBibTeX?.ready; } catch (e) {}
 
       const libraryID = Zotero.Libraries.userLibraryID;
       const allZoteroItems = await Zotero.Items.getAll(libraryID);
@@ -415,7 +429,9 @@
       }
 
       rebuildTable();
-      setStatus(`${items.length} item${items.length !== 1 ? "s" : ""}`);
+      const keyCount = items.filter(i => i.citationKey).length;
+      const bbtSuffix = _bbtNote ? ` | ${_bbtNote}` : "";
+      setStatus(`${items.length} item${items.length !== 1 ? "s" : ""} | ${keyCount} citation key${keyCount !== 1 ? "s" : ""}${bbtSuffix}`);
     })();
   </script>
 </body>
