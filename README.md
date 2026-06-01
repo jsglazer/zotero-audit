@@ -29,7 +29,7 @@ A Zotero 7/9 plugin that opens a full-library metadata table you can browse, sor
 
 ## Installation
 
-1. Download `zotero-audit.xpi` from the [repository](https://github.com/jsglazer/zotero-audit)
+1. Download `zotero-audit.xpi` from [releases](https://github.com/jsglazer/zotero-audit/releases)
 2. In Zotero: **Tools → Add-ons → gear icon → Install Add-on From File…**
 3. Select the `.xpi` file and restart Zotero
 
