@@ -1,4 +1,4 @@
-/* bootstrap.js — Zotero Audit v1.0.6
+/* bootstrap.js — Zotero Audit v1.0.7
  * Zotero 7+ bootstrapped extension entry point.
  * chrome.manifest is NOT auto-processed; must be registered via
  * aomStartup.registerChrome() in startup() so chrome:// URLs resolve.
@@ -65,7 +65,8 @@ var ZoteroAudit = {
     this._dialog = win.openDialog(
       "chrome://zotero-audit/content/audit.html",
       "zotero-audit-dialog",
-      "chrome,dialog=no,resizable,centerscreen,width=1200,height=700"
+      "chrome,dialog=no,resizable,centerscreen,width=1200,height=700",
+      Zotero
     );
   },
 };

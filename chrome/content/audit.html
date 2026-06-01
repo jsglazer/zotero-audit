@@ -167,15 +167,17 @@
         statusbar.className = cls || "";
       }
 
-      // Access Zotero directly via Components — resource:// pages share the
-      // privileged process so no cross-window bridge is needed.
-      let Zotero;
+      // Zotero is passed from bootstrap.js via openDialog's extra argument.
+      // window.arguments[0] is a live object reference (chrome-to-chrome is safe).
+      const Zotero = window.arguments[0];
+      if (!Zotero) {
+        setStatus("Error: Zotero not passed to dialog", "error");
+        return;
+      }
       try {
-        Zotero = Components.classes["@zotero.org/Zotero;1"]
-          .getService(Components.interfaces.nsISupports).wrappedJSObject;
         await Zotero.initializationPromise;
       } catch (e) {
-        setStatus(`Error accessing Zotero: ${e.message || e}`, "error");
+        setStatus(`Error waiting for Zotero: ${e.message || e}`, "error");
         return;
       }
 
