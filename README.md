@@ -35,7 +35,12 @@ A Zotero 7/9 plugin that opens a full-library metadata table you can browse, sor
 
 ## Usage
 
-**Tools → Audit Library…**
+**Tools → Audit Library…** or press **⌥⌘A**
+
+| Shortcut | Action |
+|---|---|
+| ⌥⌘A | Open Audit Library dialog |
+| ⌘W | Close the dialog |
 
 The dialog opens with all library items loaded. The status bar at the bottom shows the item count, citation key count, and any BBT diagnostic messages.
 
