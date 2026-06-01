@@ -85,13 +85,31 @@
     }
 
     /* Column widths */
-    th:nth-child(1), td:nth-child(1) { width: 12%; }
-    th:nth-child(2), td:nth-child(2) { width: 18%; }
-    th:nth-child(3), td:nth-child(3) { width: 22%; }
-    th:nth-child(4), td:nth-child(4) { width: 12%; }
-    th:nth-child(5), td:nth-child(5) { width: 16%; }
+    th:nth-child(1), td:nth-child(1) { width: 11%; }
+    th:nth-child(2), td:nth-child(2) { width: 17%; }
+    th:nth-child(3), td:nth-child(3) { width: 21%; }
+    th:nth-child(4), td:nth-child(4) { width: 10%; }
+    th:nth-child(5), td:nth-child(5) { width: 15%; }
     th:nth-child(6), td:nth-child(6) { width: 10%; }
     th:nth-child(7), td:nth-child(7) { width: 10%; }
+    th:nth-child(8), td:nth-child(8) { width: 6%; min-width: 44px; }
+
+    .go-btn {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: none;
+      border: none;
+      color: #555;
+      cursor: pointer;
+      font-size: 15px;
+      padding: 0;
+    }
+
+    .go-btn:hover {
+      color: #fff;
+      background: #1a2a3a;
+    }
 
     tbody tr:nth-child(even) td {
       filter: brightness(0.95);
@@ -163,6 +181,7 @@
           <th data-sort="author">Author<span class="sort-arrow"></span></th>
           <th data-sort="year">Year<span class="sort-arrow"></span></th>
           <th data-sort="month">Month<span class="sort-arrow"></span></th>
+          <th class="no-resize" style="cursor:default;"></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -337,7 +356,7 @@
       // ── Column resize ──────────────────────────────────────────────────────
       let _resizing = null;
 
-      document.querySelectorAll("th").forEach(th => {
+      document.querySelectorAll("th:not(.no-resize)").forEach(th => {
         const handle = document.createElement("span");
         handle.className = "resizer";
         th.appendChild(handle);
@@ -465,11 +484,33 @@
         return td;
       }
 
+      function makeGoCell(item) {
+        const td = document.createElement("td");
+        const btn = document.createElement("button");
+        btn.className = "go-btn";
+        btn.textContent = "→";
+        btn.title = "Open in Zotero";
+        btn.addEventListener("click", async () => {
+          try {
+            const mainWin = Zotero.getMainWindow();
+            if (mainWin?.ZoteroPane) {
+              await mainWin.ZoteroPane.selectItem(item.id);
+              mainWin.focus();
+            }
+          } catch (e) {
+            setStatus(`Error: ${e.message || e}`, "error");
+          }
+        });
+        td.appendChild(btn);
+        return td;
+      }
+
       function buildRow(item) {
         const tr = document.createElement("tr");
         for (const field of ["type", "citationKey", "title", "shortTitle", "author", "year", "month"]) {
           tr.appendChild(makeCell(item, field, item[field]));
         }
+        tr.appendChild(makeGoCell(item));
         return tr;
       }
 

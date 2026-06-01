@@ -1,4 +1,4 @@
-/* bootstrap.js — Zotero Audit v1.0.10
+/* bootstrap.js — Zotero Audit v1.0.11
  * Zotero 7+ bootstrapped extension entry point.
  * chrome.manifest is NOT auto-processed; must be registered via
  * aomStartup.registerChrome() in startup() so chrome:// URLs resolve.
@@ -66,7 +66,7 @@ var ZoteroAudit = {
     const key = doc.createXULElement("key");
     key.id = "zotero-audit-key";
     key.setAttribute("key", "A");
-    key.setAttribute("modifiers", "accel shift");
+    key.setAttribute("modifiers", "accel alt");
     key.addEventListener("command", () => this._openDialog(win));
 
     keyset.appendChild(key);
