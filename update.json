@@ -3,7 +3,7 @@
     "zotero-audit@jsglazer.com": {
       "updates": [
         {
-          "version": "1.0.1",
+          "version": "1.0.12",
           "update_link": "https://github.com/jsglazer/zotero-audit/releases/latest/download/zotero-audit.xpi",
           "applications": {
             "zotero": {
