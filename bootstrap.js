@@ -1,4 +1,4 @@
-/* bootstrap.js — Zotero Audit v1.0.11
+/* bootstrap.js — Zotero Audit v1.0.13
  * Zotero 7+ bootstrapped extension entry point.
  * chrome.manifest is NOT auto-processed; must be registered via
  * aomStartup.registerChrome() in startup() so chrome:// URLs resolve.

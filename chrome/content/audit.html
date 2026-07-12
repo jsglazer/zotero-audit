@@ -111,6 +111,16 @@
       background: #1a2a3a;
     }
 
+    /* Marks the row most recently opened in Zotero via the → arrow */
+    .go-btn.active {
+      background: #3c82ff;
+      color: #fff;
+    }
+
+    .go-btn.active:hover {
+      background: #2f6fe0;
+    }
+
     tbody tr:nth-child(even) td {
       filter: brightness(0.95);
     }
@@ -484,6 +494,10 @@
         return td;
       }
 
+      // Tracks the single arrow currently highlighted blue, so a new click
+      // clears the previous one — only one row is marked "open" at a time.
+      let _activeGoBtn = null;
+
       function makeGoCell(item) {
         const td = document.createElement("td");
         const btn = document.createElement("button");
@@ -491,6 +505,11 @@
         btn.textContent = "→";
         btn.title = "Open in Zotero";
         btn.addEventListener("click", async () => {
+          if (_activeGoBtn && _activeGoBtn !== btn) {
+            _activeGoBtn.classList.remove("active");
+          }
+          btn.classList.add("active");
+          _activeGoBtn = btn;
           try {
             const mainWin = Zotero.getMainWindow();
             if (mainWin?.ZoteroPane) {
@@ -505,21 +524,88 @@
         return td;
       }
 
+      // Maps a Zotero item id → the live row's data object and cell inputs,
+      // so external metadata changes can refresh cells in place. Rebuilt on
+      // every rebuildTable() (sort) since the DOM nodes are recreated.
+      const EDITABLE_FIELDS = ["type", "citationKey", "title", "shortTitle", "author", "year", "month"];
+      const rowRefs = new Map();
+
       function buildRow(item) {
         const tr = document.createElement("tr");
-        for (const field of ["type", "citationKey", "title", "shortTitle", "author", "year", "month"]) {
-          tr.appendChild(makeCell(item, field, item[field]));
+        const inputs = {};
+        for (const field of EDITABLE_FIELDS) {
+          const td = makeCell(item, field, item[field]);
+          inputs[field] = td.querySelector("input.cell");
+          tr.appendChild(td);
         }
         tr.appendChild(makeGoCell(item));
+        rowRefs.set(item.id, { item, inputs });
         return tr;
       }
 
       function rebuildTable() {
         tbody.textContent = "";
+        rowRefs.clear();
         const frag = document.createDocumentFragment();
         for (const item of items) frag.appendChild(buildRow(item));
         tbody.appendChild(frag);
       }
+
+      // ── Live sync: reflect external Zotero edits into open rows ─────────────
+
+      function readItemFields(zitem) {
+        const dateStr = zitem.getField("date") || "";
+        const first = zitem.getCreators()[0] || null;
+        return {
+          type: localizeType(zitem.itemType),
+          citationKey: getCitationKey(zitem),
+          title: zitem.getField("title") || "",
+          shortTitle: safeGetField(zitem, "shortTitle"),
+          author: first ? formatCreator(first) : "",
+          year: parseYear(dateStr),
+          month: parseMonth(dateStr),
+        };
+      }
+
+      async function refreshRow(ref) {
+        let zitem;
+        try {
+          zitem = await Zotero.Items.getAsync(ref.item.id);
+        } catch (e) {
+          return;
+        }
+        if (!zitem) return;
+
+        const fresh = readItemFields(zitem);
+        for (const field of EDITABLE_FIELDS) {
+          const value = fresh[field];
+          ref.item[field] = value;
+          const input = ref.inputs[field];
+          if (!input) continue;
+          // Don't clobber a cell the user is actively editing.
+          if (input === document.activeElement) continue;
+          input.value = value;
+          input._saved = value;
+          updateCellClass(input.parentNode, value);
+        }
+      }
+
+      const notifierObserver = {
+        notify: async (event, type, ids /*, extraData */) => {
+          if (type !== "item" || event !== "modify") return;
+          for (const id of ids) {
+            const ref = rowRefs.get(id) || rowRefs.get(Number(id));
+            if (ref) await refreshRow(ref);
+          }
+        },
+      };
+
+      const notifierID = Zotero.Notifier.registerObserver(
+        notifierObserver, ["item"], "zotero-audit"
+      );
+      window.addEventListener("unload", () => {
+        try { Zotero.Notifier.unregisterObserver(notifierID); } catch (e) {}
+      });
 
       rebuildTable();
       const keyCount = items.filter(i => i.citationKey).length;
