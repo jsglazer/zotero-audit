@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero Audit",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "Audit and edit metadata fields across your Zotero library",
   "homepage_url": "https://github.com/jsglazer/zotero-audit",
   "applications": {

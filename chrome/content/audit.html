@@ -213,7 +213,8 @@
 
       // Zotero is passed from bootstrap.js via openDialog's extra argument.
       // window.arguments[0] is a live object reference (chrome-to-chrome is safe).
-      const Zotero = window.arguments[0];
+      const { Zotero, version } = window.arguments[0] || {};
+      document.title = version ? `Zotero Audit (${version})` : "Zotero Audit";
       if (!Zotero) {
         setStatus("Error: Zotero not passed to dialog", "error");
         return;
