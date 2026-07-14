@@ -13,6 +13,7 @@ A Zotero 7/9 plugin that opens a full-library metadata table you can browse, sor
 - **Column sort** — click any header to sort ascending; click again to reverse
 - **Citation ID column** — reads auto-generated and pinned keys from [Better BibTeX](https://retorque.re/zotero-better-bibtex/) (falls back to `Citation Key:` in the Extra field)
 - **Color-coded cells** — green = value present, red = value missing
+- **Version in window title** — the dialog title shows the running plugin version, e.g. "Zotero Audit (1.0.14)"
 
 ### Columns
 
