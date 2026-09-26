@@ -3,12 +3,12 @@
     "zotero-audit@jsglazer.com": {
       "updates": [
         {
-          "version": "1.0.14",
+          "version": "1.0.15",
           "update_link": "https://github.com/jsglazer/zotero-audit/releases/latest/download/zotero-audit.xpi",
           "applications": {
             "zotero": {
               "strict_min_version": "7.0.0",
-              "strict_max_version": "9.*"
+              "strict_max_version": "10.0.*"
             }
           }
         }

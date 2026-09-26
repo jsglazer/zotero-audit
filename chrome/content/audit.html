@@ -409,7 +409,11 @@
 
         switch (field) {
           case "type": {
-            const typeID = Zotero.ItemTypes.getID(unlocalizeType(value));
+            const typeName = unlocalizeType(value);
+            // Zotero 10 throws when converting a regular item to a note/attachment/annotation
+            if (["note", "attachment", "annotation"].includes(typeName))
+              throw new Error(`"${value}" is not a regular item type`);
+            const typeID = Zotero.ItemTypes.getID(typeName);
             if (typeID) zitem.setType(typeID);
             break;
           }
