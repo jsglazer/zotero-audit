@@ -2,7 +2,7 @@
 
 [![GitHub release](https://img.shields.io/github/v/release/jsglazer/zotero-audit?logo=github)](https://github.com/jsglazer/zotero-audit/releases) [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/jsglazer/zotero-audit/blob/main/LICENSE) [![Made with Claude](https://img.shields.io/badge/Made_with-Claude-D97756?logo=anthropic)](https://claude.ai) [![Gemini Flash Antigravity](https://img.shields.io/badge/Gemini%20Flash-Antigravity-4f86f7?logo=google-gemini&logoColor=white)](https://github.com/google-gemini) [![CI](https://github.com/jsglazer/zotero-audit/actions/workflows/ci.yml/badge.svg)](https://github.com/jsglazer/zotero-audit/actions/workflows/ci.yml) [![CodeQL](https://github.com/jsglazer/zotero-audit/actions/workflows/codeql.yml/badge.svg)](https://github.com/jsglazer/zotero-audit/actions/workflows/codeql.yml) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/jsglazer/zotero-audit/badge)](https://securityscorecards.dev/viewer/?uri=github.com/jsglazer/zotero-audit)
 
-A Zotero 7/9 plugin that opens a full-library metadata table you can browse, sort, and edit in place.
+A Zotero 7–10 plugin that opens a full-library metadata table you can browse, sort, and edit in place.
 
 ## Features
 
@@ -13,7 +13,7 @@ A Zotero 7/9 plugin that opens a full-library metadata table you can browse, sor
 - **Column sort** — click any header to sort ascending; click again to reverse
 - **Citation ID column** — reads auto-generated and pinned keys from [Better BibTeX](https://retorque.re/zotero-better-bibtex/) (falls back to `Citation Key:` in the Extra field)
 - **Color-coded cells** — green = value present, red = value missing
-- **Version in window title** — the dialog title shows the running plugin version, e.g. "Zotero Audit (1.0.14)"
+- **Version in window title** — the dialog title shows the running plugin version, e.g. "Zotero Audit (1.0.15)"
 
 ### Columns
 
@@ -29,7 +29,7 @@ A Zotero 7/9 plugin that opens a full-library metadata table you can browse, sor
 
 ## Requirements
 
-- Zotero 7.0.0 or later (Zotero 9 supported)
+- Zotero 7.0.0 through 10.0.x (Zotero 9 and 10 supported)
 - [Better BibTeX for Zotero](https://retorque.re/zotero-better-bibtex/) (optional — required for the Citation ID column)
 
 ## Installation
@@ -53,6 +53,7 @@ The dialog opens with all library items loaded. The status bar at the bottom sho
 
 - Click a cell to edit
 - Tab or click away to save
+- Content Type accepts regular item types only; entering Note, Attachment, or Annotation is rejected with an error in the status bar and the cell reverts
 - The cell turns green/red immediately; "Saving…" appears in the status bar while the write completes
 - Edits you make to the same item in the main Zotero window appear in the table automatically, without reopening it
 
